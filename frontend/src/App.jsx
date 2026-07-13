@@ -32,6 +32,7 @@ import AdminSlotsPage from './pages/manager/AdminSlotsPage';
 import UserManagementPage from './pages/manager/UserManagementPage';
 import StaffManagementPage from './pages/manager/StaffManagementPage';
 import RevenueReportsPage from './pages/manager/RevenueReportsPage';
+import SystemReportsPage from './pages/manager/SystemReportsPage';
 
 // Shared placeholder
 import PlaceholderPage from './pages/PlaceholderPage';
@@ -89,7 +90,7 @@ export default function App() {
             <Route path="slots"     element={<AdminSlotsPage />} />
             <Route path="users"     element={<UserManagementPage />} />
             <Route path="staff"     element={<StaffManagementPage />} />
-            <Route path="reports"   element={<PlaceholderPage title="System Reports" />} />
+            <Route path="reports"   element={<SystemReportsPage />} />
           </Route>
 
           {/* ── Fallback redirect → Landing Page ────────────────── */}

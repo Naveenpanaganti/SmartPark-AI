@@ -487,6 +487,38 @@ app.delete('/api/admin/users/:id', authenticateToken, checkRole('manager'), asyn
   }
 });
 
+
+// GET /api/admin/reports/bookings — fetch all bookings for reporting (Manager only)
+app.get('/api/admin/reports/bookings', authenticateToken, checkRole('manager'), async (req, res) => {
+  try {
+    const query = `
+      SELECT 
+        b.id,
+        b.user_name as booked_by_name,
+        u.email as booked_by_email,
+        s.slot_number,
+        s.floor_level,
+        s.is_premium,
+        b.start_time,
+        b.end_time,
+        b.status,
+        (EXTRACT(EPOCH FROM (b.end_time - b.start_time))/3600.0) as duration_hours,
+        CASE WHEN s.is_premium THEN 
+          (EXTRACT(EPOCH FROM (b.end_time - b.start_time))/3600.0) * 10 
+        ELSE 0 END as cost
+      FROM bookings b
+      JOIN parking_slots s ON b.slot_id = s.id
+      LEFT JOIN users u ON b.user_id = u.id
+      ORDER BY b.start_time DESC
+      LIMIT 1000
+    `;
+    const result = await pool.query(query);
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ── Admin: Staff Management ──────────────────────────────────
 
 // GET /api/admin/staff — list only security + manager accounts (Manager only)
