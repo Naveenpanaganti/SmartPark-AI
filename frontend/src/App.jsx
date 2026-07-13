@@ -31,6 +31,7 @@ import ManagerDashboard from './pages/manager/Dashboard';
 import AdminSlotsPage from './pages/manager/AdminSlotsPage';
 import UserManagementPage from './pages/manager/UserManagementPage';
 import StaffManagementPage from './pages/manager/StaffManagementPage';
+import RevenueReportsPage from './pages/manager/RevenueReportsPage';
 
 // Shared placeholder
 import PlaceholderPage from './pages/PlaceholderPage';
@@ -84,7 +85,7 @@ export default function App() {
           }>
             <Route index element={<Navigate to="dashboard" replace />} />
             <Route path="dashboard" element={<ManagerDashboard />} />
-            <Route path="revenue"   element={<PlaceholderPage title="Revenue Reports" />} />
+            <Route path="revenue"   element={<RevenueReportsPage />} />
             <Route path="slots"     element={<AdminSlotsPage />} />
             <Route path="users"     element={<UserManagementPage />} />
             <Route path="staff"     element={<StaffManagementPage />} />

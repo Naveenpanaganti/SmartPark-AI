@@ -233,5 +233,60 @@ router.get('/predictions', async (req, res, next) => {
     next(err);
   }
 });
+// ─────────────────────────────────────────────────────────────
+// GET /api/analytics/revenue
+// ─────────────────────────────────────────────────────────────
+router.get('/revenue', async (req, res, next) => {
+  try {
+    const { rows } = await pool.query(`
+      SELECT
+        DATE(b.start_time) as date,
+        SUM(
+          EXTRACT(EPOCH FROM (b.end_time - b.start_time))/3600.0 * 
+          CASE WHEN s.is_premium THEN 10.0 ELSE 5.0 END
+        ) as daily_revenue
+      FROM bookings b
+      JOIN parking_slots s ON b.slot_id = s.id
+      WHERE b.status != 'cancelled'
+      GROUP BY DATE(b.start_time)
+      ORDER BY date ASC
+    `);
+
+    let totalRevenue = 0;
+    let todayRevenue = 0;
+    let thisMonthRevenue = 0;
+    
+    const today = new Date();
+    const todayStr = today.toISOString().split('T')[0];
+    const thisMonthStr = todayStr.substring(0, 7); // YYYY-MM
+
+    const chartData = rows.map(row => {
+      const dateStr = new Date(row.date).toISOString().split('T')[0];
+      const rev = parseFloat(row.daily_revenue || 0);
+      
+      totalRevenue += rev;
+      if (dateStr === todayStr) {
+        todayRevenue += rev;
+      }
+      if (dateStr.startsWith(thisMonthStr)) {
+        thisMonthRevenue += rev;
+      }
+      
+      return {
+        date: dateStr,
+        revenue: parseFloat(rev.toFixed(2))
+      };
+    });
+
+    res.json({
+      total_revenue: parseFloat(totalRevenue.toFixed(2)),
+      today_revenue: parseFloat(todayRevenue.toFixed(2)),
+      this_month_revenue: parseFloat(thisMonthRevenue.toFixed(2)),
+      chart_data: chartData
+    });
+  } catch (err) {
+    next(err);
+  }
+});
 
 module.exports = router;
