@@ -6,20 +6,31 @@ import { AuthProvider } from './context/AuthContext';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import PublicRoute from './components/auth/PublicRoute';
 import Register from './pages/auth/Register';
+import Login from './pages/auth/Login';
 
 // Layouts
 import CustomerLayout from './layouts/CustomerLayout';
 import SecurityLayout from './layouts/SecurityLayout';
 import ManagerLayout from './layouts/ManagerLayout';
 
+// Public pages
+import LandingPage from './pages/LandingPage';
+
 // Customer pages
 import CustomerDashboard from './pages/customer/Dashboard';
+import BookingsPage from './pages/customer/BookingsPage';
+import QRPage from './pages/customer/QRPage';
 
 // Security pages
 import SecurityDashboard from './pages/security/Dashboard';
+import EntryVerificationPage from './pages/security/EntryVerificationPage';
+import ExitVerificationPage from './pages/security/ExitVerificationPage';
 
 // Manager pages
 import ManagerDashboard from './pages/manager/Dashboard';
+import AdminSlotsPage from './pages/manager/AdminSlotsPage';
+import UserManagementPage from './pages/manager/UserManagementPage';
+import StaffManagementPage from './pages/manager/StaffManagementPage';
 
 // Shared placeholder
 import PlaceholderPage from './pages/PlaceholderPage';
@@ -33,8 +44,12 @@ export default function App() {
       <AuthProvider>
         <Routes>
           {/* ── Public routes ──────────────────────────────────── */}
+          <Route path="/" element={<LandingPage />} />
           <Route path="/register" element={
             <PublicRoute><Register /></PublicRoute>
+          } />
+          <Route path="/login" element={
+            <PublicRoute><Login /></PublicRoute>
           } />
 
           {/* ── Customer routes ─────────────────────────────────── */}
@@ -44,9 +59,9 @@ export default function App() {
             <Route index element={<Navigate to="dashboard" replace />} />
             <Route path="dashboard" element={<CustomerDashboard />} />
             <Route path="parking"   element={<div className="bg-gray-900/20 border border-gray-900/60 rounded-3xl p-6"><ParkingGrid /></div>} />
-            <Route path="bookings"  element={<PlaceholderPage title="My Bookings" />} />
-            <Route path="history"   element={<PlaceholderPage title="Booking History" />} />
-            <Route path="qr"        element={<PlaceholderPage title="QR Pass" />} />
+            <Route path="bookings"  element={<BookingsPage />} />
+            <Route path="history"   element={<BookingsPage />} />
+            <Route path="qr"        element={<QRPage />} />
             <Route path="profile"   element={<PlaceholderPage title="Profile Settings" />} />
           </Route>
 
@@ -56,9 +71,9 @@ export default function App() {
           }>
             <Route index element={<Navigate to="dashboard" replace />} />
             <Route path="dashboard"  element={<SecurityDashboard />} />
-            <Route path="entry"      element={<PlaceholderPage title="Vehicle Entry Verification" />} />
-            <Route path="exit"       element={<PlaceholderPage title="Vehicle Exit Verification" />} />
-            <Route path="scan"       element={<PlaceholderPage title="QR Scanner" />} />
+            <Route path="entry"      element={<EntryVerificationPage />} />
+            <Route path="exit"       element={<ExitVerificationPage />} />
+            <Route path="scan"       element={<EntryVerificationPage />} />
             <Route path="logs"       element={<PlaceholderPage title="Activity Logs" />} />
             <Route path="occupancy"  element={<PlaceholderPage title="Occupancy Overview" />} />
           </Route>
@@ -70,15 +85,14 @@ export default function App() {
             <Route index element={<Navigate to="dashboard" replace />} />
             <Route path="dashboard" element={<ManagerDashboard />} />
             <Route path="revenue"   element={<PlaceholderPage title="Revenue Reports" />} />
-            <Route path="slots"     element={<PlaceholderPage title="Slot Management" />} />
-            <Route path="users"     element={<PlaceholderPage title="User Management" />} />
-            <Route path="staff"     element={<PlaceholderPage title="Staff Management" />} />
+            <Route path="slots"     element={<AdminSlotsPage />} />
+            <Route path="users"     element={<UserManagementPage />} />
+            <Route path="staff"     element={<StaffManagementPage />} />
             <Route path="reports"   element={<PlaceholderPage title="System Reports" />} />
           </Route>
 
-          {/* ── Root redirect → register ───────────────────────── */}
-          <Route path="/" element={<Navigate to="/register" replace />} />
-          <Route path="*" element={<Navigate to="/register" replace />} />
+          {/* ── Fallback redirect → Landing Page ────────────────── */}
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </AuthProvider>
     </BrowserRouter>

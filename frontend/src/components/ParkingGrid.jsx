@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Car, Bike, Sparkles, User, Layers, CheckCircle2, AlertCircle, Trash2 } from 'lucide-react';
+import { Car, Bike, Sparkles, User, Layers, CheckCircle2, AlertCircle, Trash2, RotateCcw } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 const API_BASE = 'http://localhost:3000/api';
@@ -21,28 +21,26 @@ export default function ParkingGrid() {
     if (user) setUserName(user.full_name || user.email || '');
   }, [user]);
 
-  // Handle cancellation/deletion of a active booking (Manager only)
-  const handleDeleteBooking = async (slotId, slotNumber) => {
-    if (!window.confirm(`Are you sure you want to cancel the booking for Slot ${slotNumber}?`)) {
-      return;
-    }
+  // Handle cancellation of a booking by booking ID (manager or owner)
+  const handleCancelBooking = async (bookingId, slotNumber, isOwner = false) => {
+    const confirmMsg = isOwner
+      ? `Revoke your booking for Slot ${slotNumber}? The slot will become available immediately.`
+      : `Cancel the active booking for Slot ${slotNumber}?`;
+    if (!window.confirm(confirmMsg)) return;
     try {
-      const res = await fetch(`${API_BASE}/slots/${slotId}/booking`, {
-        method: 'DELETE',
+      const res = await fetch(`${API_BASE}/bookings/${bookingId}/status`, {
+        method: 'PATCH',
         headers: {
-          'x-user-role': role === 'manager' ? 'manager' : role
-        }
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${getToken()}`
+        },
+        body: JSON.stringify({ status: 'cancelled' })
       });
-      
       const data = await res.json();
-      
-      if (!res.ok) {
-        throw new Error(data.error || 'Failed to cancel booking');
-      }
-      
+      if (!res.ok) throw new Error(data.error || 'Failed to cancel booking');
       await fetchSlots();
     } catch (err) {
-      alert(`Error cancelling booking: ${err.message}`);
+      alert(`Error: ${err.message}`);
     }
   };
 
@@ -86,7 +84,8 @@ export default function ParkingGrid() {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
-          'x-user-role': 'user'
+          'x-user-role': 'user',
+          'Authorization': `Bearer ${getToken()}`
         },
         body: JSON.stringify({
           slot_id: selectedSlot.id,
@@ -249,13 +248,24 @@ export default function ParkingGrid() {
                     <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
                     <span className="text-sm font-semibold">Booked / Occupied</span>
                   </div>
-                  {role === 'manager' && (
+                  {/* Revoke button: shown to the booking owner */}
+                  {slot.active_booking_id && slot.booked_by_user_id && user?.id && slot.booked_by_user_id === user.id && (
                     <button
-                      onClick={() => handleDeleteBooking(slot.id, slot.slot_number)}
+                      onClick={() => handleCancelBooking(slot.active_booking_id, slot.slot_number, true)}
+                      className="w-full py-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 hover:text-amber-300 font-semibold rounded-xl text-xs transition duration-200 border border-amber-500/20 flex items-center justify-center space-x-1"
+                    >
+                      <RotateCcw className="w-3.5 h-3.5" />
+                      <span>Revoke My Booking</span>
+                    </button>
+                  )}
+                  {/* Manager force-cancel button */}
+                  {role === 'manager' && slot.active_booking_id && (
+                    <button
+                      onClick={() => handleCancelBooking(slot.active_booking_id, slot.slot_number, false)}
                       className="w-full py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 hover:text-red-300 font-semibold rounded-xl text-xs transition duration-200 border border-red-500/20 flex items-center justify-center space-x-1"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
-                      <span>Delete Booking</span>
+                      <span>Force Cancel</span>
                     </button>
                   )}
                 </div>
