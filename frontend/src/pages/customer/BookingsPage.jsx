@@ -13,6 +13,7 @@ export default function BookingsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState(location.pathname.includes('history') ? 'history' : 'upcoming'); // 'upcoming' | 'history'
+  const [selectedHistoryBooking, setSelectedHistoryBooking] = useState(null);
 
   const fetchMyBookings = async () => {
     try {
@@ -63,6 +64,19 @@ export default function BookingsPage() {
   const pastBookings = bookings.filter(b => b.status === 'completed' || b.status === 'cancelled');
 
   const displayedBookings = activeTab === 'upcoming' ? upcomingBookings : pastBookings;
+
+  const getDurationHours = (start, end) => {
+    const diffMs = new Date(end) - new Date(start);
+    return Math.max(0, diffMs / (1000 * 60 * 60));
+  };
+
+  const formatDuration = (start, end) => {
+    const diffMs = new Date(end) - new Date(start);
+    if (diffMs <= 0) return '0h 0m';
+    const hours = Math.floor(diffMs / (1000 * 60 * 60));
+    const mins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+    return `${hours}h ${mins}m`;
+  };
 
   if (loading) {
     return (
@@ -185,7 +199,7 @@ export default function BookingsPage() {
                   </div>
                 </div>
 
-                {activeTab === 'upcoming' && (
+                {activeTab === 'upcoming' ? (
                   <div className="flex space-x-3 pt-3 border-t border-gray-800/60">
                     {booking.status === 'booked' && (
                       <button
@@ -203,10 +217,88 @@ export default function BookingsPage() {
                       <span>QR Pass</span>
                     </button>
                   </div>
+                ) : (
+                  <div className="flex space-x-3 pt-3 border-t border-gray-800/60">
+                    <button
+                      onClick={() => setSelectedHistoryBooking(booking)}
+                      className="flex-1 py-2 bg-gray-800 hover:bg-gray-700 text-gray-200 rounded-xl text-xs font-bold transition flex items-center justify-center space-x-1"
+                    >
+                      <span>View Details</span>
+                    </button>
+                  </div>
                 )}
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* History Details Modal */}
+      {selectedHistoryBooking && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="bg-gray-900 border border-gray-800 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl">
+            <div className="flex items-center justify-between p-5 border-b border-gray-800">
+              <h2 className="text-xl font-bold text-white">Booking Details</h2>
+              <button 
+                onClick={() => setSelectedHistoryBooking(null)}
+                className="text-gray-500 hover:text-gray-300 transition"
+              >
+                <XCircle className="w-6 h-6" />
+              </button>
+            </div>
+            <div className="p-6 space-y-5">
+              <div className="flex justify-between items-center border-b border-gray-800/60 pb-4">
+                <span className="text-gray-400">Slot Number</span>
+                <span className="text-white font-bold text-lg">{selectedHistoryBooking.slot_number}</span>
+              </div>
+              <div className="flex justify-between items-center border-b border-gray-800/60 pb-4">
+                <span className="text-gray-400">Duration</span>
+                <span className="text-white font-medium">
+                  {formatDuration(selectedHistoryBooking.start_time, selectedHistoryBooking.end_time)}
+                </span>
+              </div>
+              <div className="flex justify-between items-center border-b border-gray-800/60 pb-4">
+                <span className="text-gray-400">Status</span>
+                <span className={`text-xs font-bold uppercase tracking-wider px-2 py-0.5 rounded border ${
+                  selectedHistoryBooking.status === 'completed' ? 'bg-gray-500/10 text-gray-400 border-gray-500/20' : 'bg-rose-500/10 text-rose-400 border-rose-500/20'
+                }`}>
+                  {selectedHistoryBooking.status}
+                </span>
+              </div>
+              <div className="flex justify-between items-center border-b border-gray-800/60 pb-4">
+                <span className="text-gray-400">Parking Type</span>
+                {selectedHistoryBooking.is_premium ? (
+                  <span className="text-amber-400 font-bold bg-amber-950/40 border border-amber-500/30 px-2 py-1 rounded text-xs">VIP / Premium</span>
+                ) : (
+                  <span className="text-emerald-400 font-bold bg-emerald-950/40 border border-emerald-500/30 px-2 py-1 rounded text-xs">Standard</span>
+                )}
+              </div>
+              <div className="flex justify-between items-center bg-gray-800/50 p-4 rounded-xl border border-gray-800">
+                <span className="text-gray-300 font-medium">Payment Details</span>
+                {selectedHistoryBooking.is_premium ? (
+                  <div className="text-right">
+                    <div className="text-white font-bold text-xl">
+                      ${(getDurationHours(selectedHistoryBooking.start_time, selectedHistoryBooking.end_time) * 10).toFixed(2)}
+                    </div>
+                    <div className="text-xs text-amber-400">Paid Parking ($10/hr)</div>
+                  </div>
+                ) : (
+                  <div className="text-right">
+                    <div className="text-emerald-400 font-bold text-xl">$0.00</div>
+                    <div className="text-xs text-emerald-500">Free Parking</div>
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="p-5 border-t border-gray-800 bg-gray-900/50">
+              <button
+                onClick={() => setSelectedHistoryBooking(null)}
+                className="w-full py-3 bg-gray-800 hover:bg-gray-700 text-white font-bold rounded-xl transition"
+              >
+                Close
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
