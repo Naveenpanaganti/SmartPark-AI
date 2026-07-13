@@ -5,14 +5,13 @@ import { useAuth } from '../../context/AuthContext';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
-export default function BookingsPage() {
+export default function BookingsPage({ mode = 'active' }) {
   const { getToken } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [activeTab, setActiveTab] = useState(location.pathname.includes('history') ? 'history' : 'upcoming'); // 'upcoming' | 'history'
   const [selectedHistoryBooking, setSelectedHistoryBooking] = useState(null);
 
   const fetchMyBookings = async () => {
@@ -63,7 +62,7 @@ export default function BookingsPage() {
   const upcomingBookings = bookings.filter(b => b.status === 'booked' || b.status === 'checked-in');
   const pastBookings = bookings.filter(b => b.status === 'completed' || b.status === 'cancelled');
 
-  const displayedBookings = activeTab === 'upcoming' ? upcomingBookings : pastBookings;
+  const displayedBookings = mode === 'active' ? upcomingBookings : pastBookings;
 
   const getDurationHours = (start, end) => {
     const diffMs = new Date(end) - new Date(start);
@@ -93,14 +92,18 @@ export default function BookingsPage() {
       <div className="flex items-center justify-between border-b border-gray-800 pb-5">
         <div className="flex items-center space-x-3">
           <CalendarCheck className="text-emerald-500 w-6 h-6" />
-          <h1 className="text-2xl font-extrabold text-white">My Bookings</h1>
+          <h1 className="text-2xl font-extrabold text-white">
+            {mode === 'active' ? 'My Bookings' : 'Past Reservations'}
+          </h1>
         </div>
-        <Link
-          to="/customer/parking"
-          className="px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-gray-950 font-bold rounded-xl text-sm transition"
-        >
-          Book New Slot
-        </Link>
+        {mode === 'active' && (
+          <Link
+            to="/customer/parking"
+            className="px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-gray-950 font-bold rounded-xl text-sm transition"
+          >
+            Book New Slot
+          </Link>
+        )}
       </div>
 
       {error && (
@@ -110,41 +113,17 @@ export default function BookingsPage() {
         </div>
       )}
 
-      {/* Tabs */}
-      <div className="flex border-b border-gray-800">
-        <button
-          onClick={() => setActiveTab('upcoming')}
-          className={`px-5 py-3 text-sm font-semibold border-b-2 transition duration-200 ${
-            activeTab === 'upcoming'
-              ? 'border-emerald-500 text-emerald-400'
-              : 'border-transparent text-gray-400 hover:text-gray-200'
-          }`}
-        >
-          Active & Upcoming ({upcomingBookings.length})
-        </button>
-        <button
-          onClick={() => setActiveTab('history')}
-          className={`px-5 py-3 text-sm font-semibold border-b-2 transition duration-200 ${
-            activeTab === 'history'
-              ? 'border-emerald-500 text-emerald-400'
-              : 'border-transparent text-gray-400 hover:text-gray-200'
-          }`}
-        >
-          Past Reservations ({pastBookings.length})
-        </button>
-      </div>
-
       {/* List */}
       {displayedBookings.length === 0 ? (
         <div className="text-center py-16 bg-gray-900/20 border border-gray-900 border-dashed rounded-3xl p-8 max-w-xl mx-auto">
           <CalendarCheck className="w-12 h-12 text-gray-600 mx-auto mb-4" />
           <h3 className="text-lg font-bold text-white mb-1">No bookings found</h3>
           <p className="text-sm text-gray-400 mb-6">
-            {activeTab === 'upcoming'
+            {mode === 'active'
               ? "You don't have any active or upcoming parking reservations."
               : "No historical reservation logs found."}
           </p>
-          {activeTab === 'upcoming' && (
+          {mode === 'active' && (
             <Link
               to="/customer/parking"
               className="px-5 py-2.5 bg-gray-900 border border-gray-800 hover:border-gray-700 text-white font-medium rounded-xl transition inline-block text-sm"
@@ -199,7 +178,7 @@ export default function BookingsPage() {
                   </div>
                 </div>
 
-                {activeTab === 'upcoming' ? (
+                {mode === 'active' ? (
                   <div className="flex space-x-3 pt-3 border-t border-gray-800/60">
                     {booking.status === 'booked' && (
                       <button

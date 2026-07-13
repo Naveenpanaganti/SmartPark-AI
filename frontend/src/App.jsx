@@ -61,8 +61,8 @@ export default function App() {
             <Route index element={<Navigate to="dashboard" replace />} />
             <Route path="dashboard" element={<CustomerDashboard />} />
             <Route path="parking"   element={<div className="bg-gray-900/20 border border-gray-900/60 rounded-3xl p-6"><ParkingGrid /></div>} />
-            <Route path="bookings"  element={<BookingsPage />} />
-            <Route path="history"   element={<BookingsPage />} />
+            <Route path="bookings"  element={<BookingsPage mode="active" />} />
+            <Route path="history"   element={<BookingsPage mode="history" />} />
             <Route path="qr"        element={<QRPage />} />
             <Route path="profile"   element={<PlaceholderPage title="Profile Settings" />} />
           </Route>
