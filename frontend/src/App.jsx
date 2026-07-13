@@ -5,7 +5,6 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import PublicRoute from './components/auth/PublicRoute';
-import Login from './pages/auth/Login';
 import Register from './pages/auth/Register';
 
 // Layouts
@@ -34,9 +33,6 @@ export default function App() {
       <AuthProvider>
         <Routes>
           {/* ── Public routes ──────────────────────────────────── */}
-          <Route path="/login" element={
-            <PublicRoute><Login /></PublicRoute>
-          } />
           <Route path="/register" element={
             <PublicRoute><Register /></PublicRoute>
           } />
@@ -80,9 +76,9 @@ export default function App() {
             <Route path="reports"   element={<PlaceholderPage title="System Reports" />} />
           </Route>
 
-          {/* ── Root redirect ───────────────────────────────────── */}
-          <Route path="/" element={<Navigate to="/login" replace />} />
-          <Route path="*" element={<Navigate to="/login" replace />} />
+          {/* ── Root redirect → register ───────────────────────── */}
+          <Route path="/" element={<Navigate to="/register" replace />} />
+          <Route path="*" element={<Navigate to="/register" replace />} />
         </Routes>
       </AuthProvider>
     </BrowserRouter>

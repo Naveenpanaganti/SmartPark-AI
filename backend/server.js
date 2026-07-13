@@ -42,7 +42,25 @@ setInterval(captureSnapshot, 5 * 60 * 1000);
 captureSnapshot();
 
 const app = express();
-app.use(cors());
+
+// ── CORS — allow Vercel frontend + local dev ───────────────
+const allowedOrigins = [
+  'http://localhost:5173',
+  'https://smart-park-ai-zeta.vercel.app',
+  process.env.FRONTEND_URL,
+].filter(Boolean);
+
+app.use(cors({
+  origin: (origin, callback) => {
+    // Allow requests with no origin (curl, Postman, Render health checks)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.some(o => origin.startsWith(o))) {
+      return callback(null, true);
+    }
+    return callback(new Error(`CORS blocked: ${origin}`));
+  },
+  credentials: true,
+}));
 app.use(express.json());
 
 // ── Swagger UI ─────────────────────────────────────────────

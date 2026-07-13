@@ -3,15 +3,23 @@
 const { Pool } = require('pg');
 require('dotenv').config();
 
-// Use POOLER_DATABASE_URL if set, otherwise fall back to DATABASE_URL.
-// The pooler URL (port 6543) is required for this Supabase project.
-const connectionString =
-  process.env.POOLER_DATABASE_URL ||
-  'postgresql://postgres.rijsgvwdvznzbqwqjdyd:Mallesh%4017302@aws-1-ap-northeast-2.pooler.supabase.com:6543/postgres';
+const connectionString = process.env.DATABASE_URL;
+
+if (!connectionString) {
+  console.error('[DB] ERROR: DATABASE_URL environment variable is not set.');
+  process.exit(1);
+}
 
 const pool = new Pool({
   connectionString,
   ssl: { rejectUnauthorized: false },
+  max: 5,
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 10000,
+});
+
+pool.on('error', (err) => {
+  console.error('[DB] Unexpected pool error:', err.message);
 });
 
 module.exports = pool;
