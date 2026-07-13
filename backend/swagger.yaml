@@ -1,0 +1,532 @@
+openapi: 3.0.3
+info:
+  title: ParkSmart API
+  version: 2.0.0
+  description: |
+    Parking management + analytics API for ParkSmart Hackathon 3.0.
+
+    ## Authentication
+    Protected endpoints require an `x-user-role` header set to either `user` or `manager`.
+    Endpoints marked **Manager only** require `x-user-role: manager`.
+
+servers:
+  - url: http://localhost:3000
+    description: Local development
+  - url: https://parksmart-backend.onrender.com
+    description: Production (Render)
+
+tags:
+  - name: Health
+    description: Service health check
+  - name: Slots
+    description: Parking slot queries
+  - name: Bookings
+    description: Booking management
+  - name: Analytics
+    description: Occupancy analytics, statistics, predictions, and heatmap
+
+paths:
+  /api/health:
+    get:
+      tags: [Health]
+      summary: Health check
+      description: Returns server and database status. Always returns HTTP 200.
+      responses:
+        '200':
+          description: Service is up
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+                  timestamp:
+                    type: string
+                    format: date-time
+                    example: '2024-06-01T12:00:00.000Z'
+                  db:
+                    type: string
+                    enum: [connected, error]
+                    example: connected
+
+  /api/slots:
+    get:
+      tags: [Slots]
+      summary: List all parking slots with current booking status
+      description: Returns all parking slots. No authentication required.
+      responses:
+        '200':
+          description: Array of parking slot objects
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ParkingSlot'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/book:
+    post:
+      tags: [Bookings]
+      summary: Create a new booking
+      description: Books an available parking slot. Requires `user` or `manager` role.
+      x-role-required: user
+      security:
+        - RoleHeader: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BookingRequest'
+      responses:
+        '200':
+          description: Booking created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Booking'
+        '400':
+          description: Missing required fields or slot already occupied
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                missingFields:
+                  value: { error: 'Missing required fields: slot_id and user_name' }
+                collision:
+                  value: { error: 'Booking collision: Slot already occupied.' }
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/all-bookings:
+    get:
+      tags: [Bookings]
+      summary: List all bookings (Manager only)
+      description: Returns all bookings with slot details. Requires `manager` role.
+      x-role-required: manager
+      security:
+        - RoleHeader: []
+      responses:
+        '200':
+          description: Array of booking objects with slot info
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/BookingWithSlot'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/slots/{slot_id}/booking:
+    delete:
+      tags: [Bookings]
+      summary: Cancel an active booking for a slot (Manager only)
+      description: Deletes the currently active booking for the given slot. Requires `manager` role.
+      x-role-required: manager
+      security:
+        - RoleHeader: []
+      parameters:
+        - name: slot_id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: The parking slot ID
+      responses:
+        '200':
+          description: Booking cancelled successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Booking cancelled successfully.
+                  deleted:
+                    $ref: '#/components/schemas/Booking'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: No active booking found for this slot
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: No active booking found for this slot.
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/analytics/occupancy-history:
+    get:
+      tags: [Analytics]
+      summary: Fetch occupancy snapshots
+      description: Returns occupancy snapshot records filtered by time window and optionally by floor. Results are ordered by `recorded_at` ascending.
+      parameters:
+        - name: floor
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Filter by floor level (e.g. "Ground", "Level 1", "Level 2")
+          example: Ground
+        - name: hours
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 168
+            default: 24
+          description: Number of hours of history to return (1–168)
+      responses:
+        '200':
+          description: Occupancy snapshot array (may include a data_warning when data is sparse)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/OccupancySnapshot'
+                  data_warning:
+                    type: string
+                    example: 'Insufficient historical data — results may be inaccurate'
+        '400':
+          description: Invalid query parameter
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+              example:
+                message: hours must be a positive integer between 1 and 168
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/analytics/stats:
+    get:
+      tags: [Analytics]
+      summary: KPI summary statistics
+      description: Returns key performance indicators for the current state of the parking facility.
+      responses:
+        '200':
+          description: KPI statistics object
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatsResponse'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/analytics/predictions:
+    get:
+      tags: [Analytics]
+      summary: 24-hour WMA occupancy predictions
+      description: Returns 24 prediction objects (one per hour) for the target date using a weighted moving average of the past 14 days of historical snapshots.
+      parameters:
+        - name: target_date
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+          description: ISO 8601 date for which to compute predictions (defaults to tomorrow)
+          example: '2024-06-15'
+      responses:
+        '200':
+          description: Array of 24 prediction objects
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    minItems: 24
+                    maxItems: 24
+                    items:
+                      $ref: '#/components/schemas/Prediction'
+                  mae_yesterday:
+                    type: number
+                    nullable: true
+                    description: Mean Absolute Error of yesterday's predictions vs actuals
+                    example: 3.72
+                  data_warning:
+                    type: string
+                    example: 'Insufficient historical data — results may be inaccurate'
+        '400':
+          description: Invalid target_date format
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+              example:
+                message: target_date must be a valid ISO 8601 date string
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/analytics/heatmap:
+    get:
+      tags: [Analytics]
+      summary: 7×24 average occupancy heatmap matrix
+      description: Returns a 7-row × 24-column matrix of average occupancy rates indexed by [day_of_week][hour_of_day]. Day 0 = Sunday, Day 6 = Saturday.
+      responses:
+        '200':
+          description: Heatmap matrix
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    description: 7×24 matrix of average occupancy rates (0–100)
+                    minItems: 7
+                    maxItems: 7
+                    items:
+                      type: array
+                      minItems: 24
+                      maxItems: 24
+                      items:
+                        type: number
+                        minimum: 0
+                        maximum: 100
+                  data_warning:
+                    type: string
+                    example: 'Insufficient historical data — results may be inaccurate'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+components:
+  securitySchemes:
+    RoleHeader:
+      type: apiKey
+      in: header
+      name: x-user-role
+      description: Role identifier. Use `user` for standard access or `manager` for full administrative access.
+
+  schemas:
+    ParkingSlot:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        slot_number:
+          type: string
+          example: A-01
+        floor_level:
+          type: string
+          example: Ground
+        vehicle_type:
+          type: string
+          enum: [car, bike]
+          example: car
+        is_premium:
+          type: boolean
+          example: false
+        is_booked:
+          type: boolean
+          example: false
+
+    BookingRequest:
+      type: object
+      required: [slot_id, user_name]
+      properties:
+        slot_id:
+          type: integer
+          example: 5
+        user_name:
+          type: string
+          example: Jane Doe
+        start_time:
+          type: string
+          format: date-time
+          nullable: true
+          description: Defaults to NOW() if omitted
+        end_time:
+          type: string
+          format: date-time
+          nullable: true
+          description: Defaults to NOW() + 1 hour if omitted
+
+    Booking:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 42
+        slot_id:
+          type: integer
+          example: 5
+        user_name:
+          type: string
+          example: Jane Doe
+        start_time:
+          type: string
+          format: date-time
+        end_time:
+          type: string
+          format: date-time
+
+    BookingWithSlot:
+      allOf:
+        - $ref: '#/components/schemas/Booking'
+        - type: object
+          properties:
+            slot_number:
+              type: string
+              example: A-01
+            floor_level:
+              type: string
+              example: Ground
+
+    OccupancySnapshot:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 101
+        recorded_at:
+          type: string
+          format: date-time
+        floor_level:
+          type: string
+          example: Ground
+        total_slots:
+          type: integer
+          example: 20
+        booked_slots:
+          type: integer
+          example: 14
+        available_slots:
+          type: integer
+          example: 6
+        occupancy_rate:
+          type: number
+          example: 70.0
+        is_outlier:
+          type: boolean
+          example: false
+
+    StatsResponse:
+      type: object
+      properties:
+        current_occupancy_rate:
+          type: number
+          example: 65.5
+        peak_hour_today:
+          type: integer
+          nullable: true
+          minimum: 0
+          maximum: 23
+          example: 12
+        avg_occupancy_last_7_days:
+          type: number
+          example: 58.3
+        total_bookings_today:
+          type: integer
+          example: 47
+        busiest_floor:
+          type: string
+          nullable: true
+          example: Level 1
+        mae_yesterday:
+          type: number
+          nullable: true
+          example: 3.72
+        data_warning:
+          type: string
+          nullable: true
+          example: 'Insufficient historical data — results may be inaccurate'
+
+    Prediction:
+      type: object
+      properties:
+        hour:
+          type: integer
+          minimum: 0
+          maximum: 23
+          example: 9
+        predicted_occupancy_rate:
+          type: number
+          minimum: 0
+          maximum: 100
+          example: 74.5
+        confidence_lower:
+          type: number
+          minimum: 0
+          maximum: 100
+          example: 68.2
+        confidence_upper:
+          type: number
+          minimum: 0
+          maximum: 100
+          example: 80.8
+        is_peak:
+          type: boolean
+          example: true
+        low_confidence:
+          type: boolean
+          example: false
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          example: Internal server error
+
+    MessageResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          example: hours must be a positive integer between 1 and 168
+
+  responses:
+    Unauthorized:
+      description: Missing x-user-role header
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error: "Unauthorized: Missing 'x-user-role' header."
+
+    Forbidden:
+      description: Insufficient role privileges
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error: 'Forbidden: Manager privilege required.'
+
+    InternalError:
+      description: Unhandled server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error: Internal server error
